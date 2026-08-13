@@ -77,17 +77,14 @@ async def update_timer_embed():
     )
 
     now = datetime.now()
-
     lines = []
 
-    # เรียงตามเวลาที่จะจบ
     sorted_timers = sorted(
         active_timers.values(),
         key=lambda x: x["end_time"]
     )
 
     for data in sorted_timers:
-
         user = data["user"]
         end_time = data["end_time"]
 
@@ -96,19 +93,11 @@ async def update_timer_embed():
             int((end_time - now).total_seconds())
         )
 
-        # ---------- เวลาที่เหลือ ----------
-
         if remaining_seconds < 60:
-
             remaining_text = f"in {remaining_seconds} seconds"
-
         else:
-
             minutes = remaining_seconds // 60
-
             remaining_text = f"in {minutes} minutes"
-
-        # ---------- เวลา Timer จบ ----------
 
         end_text = end_time.strftime("%H:%M")
 
@@ -118,31 +107,42 @@ async def update_timer_embed():
         )
 
     if lines:
-
         embed.add_field(
             name="Active Trainers",
             value="\n".join(lines),
             inline=False
         )
-
     else:
-
         embed.add_field(
             name="Active Trainers",
             value="No active timers.",
             inline=False
         )
 
-    try:
+    for attempt in range(3):
+        try:
+            await timer_message.edit(
+                embed=embed,
+                view=TimerView()
+            )
+            return
 
-        await timer_message.edit(
-            embed=embed,
-            view=TimerView()
-        )
+        except discord.NotFound:
+            timer_message = None
+            return
 
-    except discord.NotFound:
+        except discord.HTTPException as e:
+            if e.status >= 500:
+                wait_seconds = 2 ** attempt
+                print(
+                    f"Discord API error {e.status} while editing timer embed. "
+                    f"Retrying in {wait_seconds}s ({attempt + 1}/3)."
+                )
+                await asyncio.sleep(wait_seconds)
+                continue
+            raise
 
-        timer_message = None
+    print("Could not update timer embed after 3 attempts.")
 
 
 # =========================
@@ -158,17 +158,13 @@ async def run_timer(
     user_id = user.id
 
     try:
-
-        # คำนวณเวลาที่ต้องรอ
         delay = (
             end_time - datetime.now()
         ).total_seconds()
 
         if delay > 0:
-
             await asyncio.sleep(delay)
 
-        # เช็กว่า Timer นี้ยังเป็น Timer ล่าสุด
         data = active_timers.get(user_id)
 
         if data is None:
@@ -177,38 +173,54 @@ async def run_timer(
         if data["end_time"] != end_time:
             return
 
-        # สุ่มข้อความ
-        message = random.choice(
-            reminder_messages
-        )
+        message = random.choice(reminder_messages)
+        message = message.format(trainer=user.display_name)
 
-        message = message.format(
-            trainer=user.display_name
-        )
+        reminder = None
 
-        # ส่ง Tag
-        reminder = await channel.send(
-            f"{user.mention} {message}"
-        )
+        # Retry temporary Discord API/server failures.
+        for attempt in range(3):
+            try:
+                reminder = await channel.send(
+                    f"{user.mention} {message}"
+                )
+                break
 
-        # เก็บ reminder ล่าสุดแยกจาก active timer
+            except discord.HTTPException as e:
+                if e.status >= 500:
+                    wait_seconds = 2 ** attempt
+                    print(
+                        f"Discord API error {e.status} while sending reminder. "
+                        f"Retrying in {wait_seconds}s ({attempt + 1}/3)."
+                    )
+                    await asyncio.sleep(wait_seconds)
+                    continue
+                raise
+
+        if reminder is None:
+            print(f"Could not send reminder for {user} after 3 attempts.")
+            return
+
         last_reminder_messages[user_id] = reminder
+        active_timers.pop(user_id, None)
+        timer_tasks.pop(user_id, None)
 
-        # เอาออกจาก Active Timer
-        del active_timers[user_id]
-
-        timer_tasks.pop(
-            user_id,
-            None
-        )
-
-        # Update Embed
-        await update_timer_embed()
+        # Do not let an embed-edit failure kill the completed timer task.
+        try:
+            await update_timer_embed()
+        except discord.HTTPException as e:
+            print(
+                f"Reminder sent, but timer embed update failed for {user}: {e}"
+            )
 
     except asyncio.CancelledError:
-
-        # Timer ถูก reset
         pass
+
+    except discord.HTTPException as e:
+        print(f"Discord HTTP error in run_timer for {user}: {e}")
+
+    except Exception as e:
+        print(f"Unexpected error in run_timer for {user}: {e}")
 
 
 # =========================
