@@ -4,6 +4,9 @@ import asyncio
 import random
 import os
 from datetime import datetime, timedelta
+from zoneinfo import ZoneInfo
+
+THAI_TZ = ZoneInfo("Asia/Bangkok")
 
 # =========================
 # SETTINGS
@@ -84,7 +87,7 @@ async def update_timer_embed():
         )
     )
 
-    now = datetime.now()
+    now = datetime.now(THAI_TZ)
     lines = []
 
     sorted_timers = sorted(
@@ -167,7 +170,7 @@ async def run_timer(
 
     try:
         delay = (
-            end_time - datetime.now()
+            end_time - datetime.now(THAI_TZ)
         ).total_seconds()
 
         if delay > 0:
@@ -303,7 +306,7 @@ class TimerView(discord.ui.View):
         # =========================
 
         end_time = (
-            datetime.now()
+            datetime.now(THAI_TZ)
             + timedelta(
                 seconds=TIMER_SECONDS
             )
