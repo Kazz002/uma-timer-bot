@@ -26,14 +26,14 @@ reminder_messages = [
     "Roses are red, violets are blue, your uma's done and they want you.",
     "Your uma says that you can only keep 10% of the fans, she earned them by herself after all.",
     "Fwuu~! Ywour Uma's twaining is aww done! Pwease give hew lots of headpats~ ♡",
-    "Hey {trainer}, you're finally awake, you were trying to farm Fans, right?"
-    "Another autorun done. Do you even actually play this game anymore?"
-    "มื้อคืนข่อยนอนบ่หลับ เพราะฮู้ว่าเรื่องระหว่างเฮามันจบแล้ว ข่อยบ่เศร้าอีกต่อไปแล้ว เพราะฮู้ว่าเฮาเลิกกันอีหลี"
-    "Your uma has finished training. Time for umapyoi"
-    "ኃጢ Uma አተኛ ነፍስህ Independent Training ከመዳን በላይ ወይም ሥቃይን Fans አታውቅም"
-    "Your trainee is starting to wonder how you even got this job."
-    "Cygames, give {Trainer} the worst sparks they've ever seen."
-    "Remember to rewards your trainee with a lot of headpats, torena."
+    "Hey {trainer}, you're finally awake, you were trying to farm Fans, right?",
+    "Another autorun done. Do you even actually play this game anymore?",
+    "มื้อคืนข่อยนอนบ่หลับ เพราะฮู้ว่าเรื่องระหว่างเฮามันจบแล้ว ข่อยบ่เศร้าอีกต่อไปแล้ว เพราะฮู้ว่าเฮาเลิกกันอีหลี",
+    "Your uma has finished training. Time for umapyoi",
+    "ኃጢ Uma አተኛ ነፍስህ Independent Training ከመዳን በላይ ወይም ሥቃይን Fans አታውቅም",
+    "Your trainee is starting to wonder how you even got this job.",
+    "Cygames, give {Trainer} the worst sparks they've ever seen.",
+    "Remember to rewards your trainee with a lot of headpats, torena.",
     "Did you forget something? It's probably not important anyways."
 ]
 
