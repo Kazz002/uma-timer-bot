@@ -32,9 +32,11 @@ reminder_messages = [
     "Your uma has finished training. Time for umapyoi",
     "ኃጢ Uma አተኛ ነፍስህ Independent Training ከመዳን በላይ ወይም ሥቃይን Fans አታውቅም",
     "Your trainee is starting to wonder how you even got this job.",
-    "Cygames, give {Trainer} the worst sparks they've ever seen.",
+    "Cygames, give this trainer the worst sparks they've ever seen.",
     "Remember to rewards your trainee with a lot of headpats, torena.",
-    "Did you forget something? It's probably not important anyways."
+    "Did you forget something? It's probably not important anyways.",
+    " F̴͆̑͑̈́i̷̔͌̈́͝n̸͗̂̇̚i̶͋̂͊͊t̶̎́̽͠a̶͕̠̣̚ est,̒̂͠ ̷̈́̀͠inutilis͒̈́ ̷̨̟̏̓m̴̽͝agi̶̓̈́̈̕s̵t̴er.̨͔̰ Sũ̓p̀̋e̶̋r̂̆͒̈́b̴̀̿̋͝i̷sne ̶͊ẗě̶͛͊̀ ̴̈́̓ip̓͒sum̸͐?",
+    "Your uma is looking around wondering where you went."
 ]
 
 
