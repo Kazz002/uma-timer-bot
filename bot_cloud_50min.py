@@ -14,6 +14,9 @@ THAI_TZ = ZoneInfo("Asia/Bangkok")
 
 # ตอนทดสอบใช้ 10 วินาที
 TIMER_SECONDS = 50 * 60
+CUSTOM_MINUTES_MIN = 1
+CUSTOM_MINUTES_MAX = 50
+REMINDER_DELETE_AFTER = 24 * 60 * 60  # 24 hours
 
 # ตอนใช้งานจริง 50 นาที ให้เปลี่ยนเป็น:
 # TIMER_SECONDS = 50 * 60
@@ -36,7 +39,12 @@ reminder_messages = [
     "Remember to rewards your trainee with a lot of headpats, torena.",
     "Did you forget something? It's probably not important anyways.",
     " F̴͆̑͑̈́i̷̔͌̈́͝n̸͗̂̇̚i̶͋̂͊͊t̶̎́̽͠a̶͕̠̣̚ est,̒̂͠ ̷̈́̀͠inutilis͒̈́ ̷̨̟̏̓m̴̽͝agi̶̓̈́̈̕s̵t̴er.̨͔̰ Sũ̓p̀̋e̶̋r̂̆͒̈́b̴̀̿̋͝i̷sne ̶͊ẗě̶͛͊̀ ̴̈́̓ip̓͒sum̸͐?",
-    "Your uma is looking around wondering where you went."
+    "Your uma is looking around wondering where you went.",
+    "Your uma will remember this.",
+    "I-it's not like I care or anything, but your Uma just finished her training... BAKA!",
+    "Hey, your autorun is done. That'll be $10.",
+    "The parent of your dreams has finished! I hope you like your 1 star guts.",
+    "Please come pick up your child."
 ]
 
 
@@ -85,7 +93,8 @@ async def update_timer_embed():
         title="🏇 Abandoned Uma Training Overwatch (AUTO)",
         description=(
             "**Start** a timer. "
-            "Pretend you're a good trainer. I know what you are."
+            "Pretend you're a good trainer. I know what you are. "
+"Use Custom for 1-50 minutes."
         )
     )
 
@@ -187,7 +196,7 @@ async def run_timer(
             return
 
         message = random.choice(reminder_messages)
-        message = message.format(trainer=user.display_name)
+        message = message.replace("{trainer}", user.display_name).replace("{Trainer}", user.display_name)
 
         reminder = None
 
@@ -195,7 +204,8 @@ async def run_timer(
         for attempt in range(3):
             try:
                 reminder = await channel.send(
-                    f"{user.mention} {message}"
+                    f"{user.mention} {message}",
+                    delete_after=REMINDER_DELETE_AFTER
                 )
                 break
 
@@ -240,113 +250,135 @@ async def run_timer(
 # START BUTTON
 # =========================
 
+async def start_timer_for_minutes(
+    interaction: discord.Interaction,
+    minutes: int
+):
+    user = interaction.user
+    user_id = user.id
+
+    # ตอบ Discord ก่อน เพื่อไม่ให้ interaction timeout
+    if not interaction.response.is_done():
+        await interaction.response.defer(ephemeral=True)
+
+    # ถ้ามี Timer เดิม ให้ยกเลิกและเริ่มใหม่
+    if user_id in timer_tasks:
+        old_task = timer_tasks[user_id]
+        old_task.cancel()
+        timer_tasks.pop(user_id, None)
+
+    # ถ้ามี Reminder เก่า ให้ลบเมื่อคนเดิมเริ่ม Timer ใหม่
+    old_reminder = last_reminder_messages.get(user_id)
+
+    if old_reminder is not None:
+        try:
+            await old_reminder.delete()
+        except discord.NotFound:
+            pass
+        except discord.Forbidden:
+            pass
+        except discord.HTTPException as e:
+            print(f"Could not delete old reminder for {user}: {e}")
+
+        last_reminder_messages.pop(user_id, None)
+
+    # สร้าง Timer ใหม่
+    end_time = datetime.now(THAI_TZ) + timedelta(minutes=minutes)
+
+    active_timers[user_id] = {
+        "user": user,
+        "end_time": end_time,
+        "reminder": None,
+        "minutes": minutes
+    }
+
+    task = asyncio.create_task(
+        run_timer(
+            user,
+            interaction.channel,
+            end_time
+        )
+    )
+
+    timer_tasks[user_id] = task
+
+    print(
+        f"[TIMER START] {user} started/reset a {minutes}-minute timer "
+        f"(ends {end_time.strftime('%H:%M:%S')} Asia/Bangkok)"
+    )
+
+    await update_timer_embed()
+
+
+class CustomTimerModal(discord.ui.Modal):
+
+    def __init__(self):
+        super().__init__(title="Custom Timer")
+
+        self.minutes_input = discord.ui.TextInput(
+            label="Minutes",
+            placeholder="Enter 1-50",
+            required=True,
+            min_length=1,
+            max_length=2
+        )
+
+        self.add_item(self.minutes_input)
+
+    async def on_submit(self, interaction: discord.Interaction):
+        value = self.minutes_input.value.strip()
+
+        if not value.isdigit():
+            await interaction.response.send_message(
+                "Please enter a whole number from 1 to 50.",
+                ephemeral=True
+            )
+            return
+
+        minutes = int(value)
+
+        if not (CUSTOM_MINUTES_MIN <= minutes <= CUSTOM_MINUTES_MAX):
+            await interaction.response.send_message(
+                "Custom timer must be between 1 and 50 minutes.",
+                ephemeral=True
+            )
+            return
+
+        await start_timer_for_minutes(interaction, minutes)
+
+
 class TimerView(discord.ui.View):
 
     def __init__(self):
-
-        super().__init__(
-            timeout=None
-        )
+        super().__init__(timeout=None)
 
     @discord.ui.button(
-        label="Start",
+        label="Start 50m",
         style=discord.ButtonStyle.green,
         emoji="⏱️",
-        custom_id="uma_timer_start"
+        custom_id="uma_timer_start_50"
     )
     async def start_timer(
         self,
         interaction: discord.Interaction,
         button: discord.ui.Button
     ):
+        await start_timer_for_minutes(interaction, 50)
 
-        user = interaction.user
-        user_id = user.id
+    @discord.ui.button(
+        label="Custom",
+        style=discord.ButtonStyle.secondary,
+        emoji="⚙️",
+        custom_id="uma_timer_custom"
+    )
+    async def custom_timer(
+        self,
+        interaction: discord.Interaction,
+        button: discord.ui.Button
+    ):
+        await interaction.response.send_modal(CustomTimerModal())
 
-        # ตอบ Discord ก่อน
-        await interaction.response.defer(
-            ephemeral=True
-        )
 
-        # =========================
-        # ถ้ามี Timer เดิม
-        # =========================
-
-        if user_id in timer_tasks:
-
-            old_task = timer_tasks[user_id]
-
-            old_task.cancel()
-
-            timer_tasks.pop(
-                user_id,
-                None
-            )
-
-        # =========================
-        # ถ้ามี Reminder เก่า
-        # =========================
-
-        old_reminder = last_reminder_messages.get(user_id)
-
-        if old_reminder is not None:
-
-            try:
-
-                await old_reminder.delete()
-
-            except discord.NotFound:
-                pass
-
-            except discord.Forbidden:
-                pass
-
-            last_reminder_messages.pop(user_id, None)
-
-        # =========================
-        # สร้าง Timer ใหม่
-        # =========================
-
-        end_time = (
-            datetime.now(THAI_TZ)
-            + timedelta(
-                seconds=TIMER_SECONDS
-            )
-        )
-
-        active_timers[user_id] = {
-            "user": user,
-            "end_time": end_time,
-            "reminder": None
-        }
-
-        task = asyncio.create_task(
-            run_timer(
-                user,
-                interaction.channel,
-                end_time
-            )
-        )
-
-        timer_tasks[user_id] = task
-
-        # Update รายชื่อ
-        await update_timer_embed()
-
-        # ข้อความเห็นเฉพาะคนกด
-        if TIMER_SECONDS < 60:
-
-            duration_text = (
-                f"{TIMER_SECONDS} seconds"
-            )
-
-        else:
-
-            duration_text = (
-                f"{TIMER_SECONDS // 60} minutes"
-            )
-
-    
 # =========================
 # AUTO REFRESH DISPLAY
 # =========================
@@ -398,7 +430,8 @@ async def autorun(ctx):
         title="🏇 Abandoned Uma Training Overwatch (AUTO)",
         description=(
             "**Start** a timer. "
-            "Pretend you're a good trainer. I know what you are."
+            "Pretend you're a good trainer. I know what you are. "
+"Use Custom for 1-50 minutes."
         )
     )
 
